@@ -1,4 +1,5 @@
 import { AddToCartButton } from './AddToCartButton';
+import Image from 'next/image';
 
 interface Product {
   id: string;
@@ -24,9 +25,11 @@ export default async function ProductPage({ params }: { params: { id: string } }
 
   return (
     <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
-      <img
+      <Image
         src={product.image}
         alt={product.name}
+        width={320}
+        height={320}
         style={{ width: 320, height: 320, objectFit: 'cover', borderRadius: 12 }}
       />
       <div style={{ flex: 1, minWidth: 260 }}>

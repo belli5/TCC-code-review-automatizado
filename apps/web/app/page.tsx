@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface Product {
   id: string;
@@ -44,7 +45,13 @@ export default async function HomePage() {
       <div className="grid">
         {products.map((product) => (
           <Link key={product.id} href={`/product/${product.id}`} className="card">
-            <img src={product.image} alt={product.name} />
+            <Image
+              src={product.image}
+              alt={product.name}
+              width={400}
+              height={400}
+              style={{ width: '100%', height: 180, objectFit: 'cover' }}
+            />
             <div className="card-body">
               <h3>{product.name}</h3>
               <p className="price">

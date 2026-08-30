@@ -8,6 +8,12 @@
   "scripts": {
     "dev:api": "npm run start:dev --workspace=apps/api",
     "dev:web": "npm run dev --workspace=apps/web",
-    "install:all": "npm install"
+    "install:all": "npm install",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:e2e": "npm run test:e2e --workspace=apps/api --if-present",
+    "ci": "npm run lint && npm run typecheck && npm run build && npm run test && npm run test:e2e"
   }
 }

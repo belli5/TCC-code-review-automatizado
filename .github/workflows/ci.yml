@@ -17,6 +17,9 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
+      # O client tipado do Prisma é gerado a partir do schema e não vai para o
+      # repositório. Sem ele, o typecheck e o build não encontram os tipos.
+      - run: npm run db:generate
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
@@ -31,6 +34,7 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
+      - run: npm run db:generate
       - run: npm run test
 
   integration-tests:
@@ -44,4 +48,7 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
+      - run: npm run db:generate
+      # A suíte e2e cria o próprio SQLite descartável no globalSetup, então não
+      # é preciso subir serviço de banco nenhum aqui.
       - run: npm run test:e2e

@@ -3,3 +3,10 @@ dist
 .next
 *.log
 .env
+
+# Prisma
+apps/api/src/generated
+apps/api/prisma/*.db
+apps/api/prisma/*.db-journal
+
+*.tsbuildinfo

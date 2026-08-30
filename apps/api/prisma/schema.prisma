@@ -1,0 +1,160 @@
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Product {
+  id                  String   @id @default(uuid())
+  slug                String   @unique
+  name                String
+  description         String
+  priceCents          Int
+  compareAtPriceCents Int?
+  image               String
+  category            String
+  stock               Int      @default(0)
+  weightGrams         Int      @default(500)
+  active              Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  reviews    Review[]
+  orderItems OrderItem[]
+
+  @@index([category])
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  productId String
+  author    String
+  rating    Int
+  comment   String
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model Coupon {
+  id               String    @id @default(uuid())
+  code             String    @unique
+  type             String
+  value            Int       @default(0)
+  description      String
+  minSubtotalCents Int       @default(0)
+  active           Boolean   @default(true)
+  expiresAt        DateTime?
+  usageLimit       Int?
+  usageCount       Int       @default(0)
+  createdAt        DateTime  @default(now())
+
+  orders Order[]
+}
+
+model Order {
+  id     String @id @default(uuid())
+  number String @unique
+  status String
+
+  customerName     String
+  customerEmail    String
+  customerDocument String?
+  customerPhone    String?
+
+  shippingZipCode    String
+  shippingStreet     String
+  shippingNumber     String
+  shippingComplement String?
+  shippingDistrict   String
+  shippingCity       String
+  shippingState      String
+
+  shippingService  String
+  shippingEtaDays  Int
+  shippingCents    Int
+  subtotalCents    Int
+  discountCents    Int    @default(0)
+  totalCents       Int
+
+  couponId   String?
+  couponCode String?
+
+  trackingCode String?
+  paidAt       DateTime?
+  shippedAt    DateTime?
+  deliveredAt  DateTime?
+  cancelledAt  DateTime?
+  cancelReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  coupon  Coupon?      @relation(fields: [couponId], references: [id])
+  items   OrderItem[]
+  events  OrderEvent[]
+  payment Payment?
+
+  @@index([customerEmail])
+  @@index([status])
+}
+
+model OrderItem {
+  id             String @id @default(uuid())
+  orderId        String
+  productId      String
+  name           String
+  image          String
+  unitPriceCents Int
+  quantity       Int
+  subtotalCents  Int
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+}
+
+model OrderEvent {
+  id        String   @id @default(uuid())
+  orderId   String
+  status    String
+  note      String
+  createdAt DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+}
+
+model Payment {
+  id           String @id @default(uuid())
+  orderId      String @unique
+  method       String
+  status       String
+  amountCents  Int
+  installments Int    @default(1)
+
+  cardBrand      String?
+  cardLast4      String?
+  cardHolderName String?
+
+  pixCode      String?
+  pixExpiresAt DateTime?
+
+  boletoDigitableLine String?
+  boletoDueDate       DateTime?
+
+  declineReason String?
+  paidAt        DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}

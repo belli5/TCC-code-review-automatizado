@@ -1,0 +1,71 @@
+name: Security - Dependências e IaC (Trivy)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    # CVE nova aparece sem ninguém tocar no código: uma dependência que passou
+    # limpa ontem pode estar vulnerável hoje. A varredura semanal pega isso
+    # mesmo em período sem commit.
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: trivy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  trivy:
+    name: Trivy (gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Não roda `npm ci`: o Trivy lê o package-lock.json direto e resolve a
+      # árvore inteira de dependências a partir dele, incluindo as transitivas.
+      # Instalar antes só deixaria o job mais lento.
+      - name: Trivy - relatório completo (SARIF)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          # `secret` fica de fora porque o Gitleaks já cobre isso, com histórico
+          # e sem duplicar achado no code scanning.
+          scanners: vuln,misconfig
+          format: sarif
+          output: trivy.sarif
+          # Este passo é só relatório; quem bloqueia é o gate lá embaixo. Se ele
+          # falhasse aqui, o SARIF nunca seria gerado e o achado não apareceria
+          # na aba Security.
+          exit-code: '0'
+
+      - name: Publica o SARIF no code scanning
+        if: always() && hashFiles('trivy.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy.sarif
+          category: trivy
+
+      - name: Gate - falha em HIGH/CRITICAL com correção disponível
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln
+          format: table
+          severity: HIGH,CRITICAL
+          # `ignore-unfixed` porque uma CVE sem patch publicado não tem ação
+          # possível no PR: bloquear o merge não corrige nada e só ensina o time
+          # a ignorar o gate. Ela continua visível no relatório acima.
+          ignore-unfixed: true
+          exit-code: '1'
+          # O banco de vulnerabilidades vem do GHCR e tem limite de download por
+          # IP. Reaproveitar o cache entre os dois passos evita baixar duas
+          # vezes no mesmo job.
+          cache: 'true'

@@ -1,69 +1,138 @@
 import Link from 'next/link';
-import Image from 'next/image';
+import { api, Category, Product } from '../lib/api';
+import { formatCents } from '../lib/format';
+import { ProductCard } from '../components/ProductCard';
+import { ApiOffline } from '../components/ApiOffline';
 
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  image: string;
+interface HomeData {
+  categories: Category[];
+  featured: Product[];
+  onSale: Product[];
+  topRated: Product[];
+  freeShippingThresholdCents: number;
 }
 
-async function getProducts(): Promise<Product[]> {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-  const res = await fetch(`${apiUrl}/products`, { cache: 'no-store' });
-  if (!res.ok) {
-    throw new Error('Erro ao buscar produtos');
+async function getHomeData(): Promise<HomeData | null> {
+  try {
+    const [categories, recent, topRated, policy] = await Promise.all([
+      api.categories(),
+      api.products({ pageSize: 8, sort: 'recent' }),
+      api.products({ pageSize: 4, sort: 'rating' }),
+      api.shippingPolicy(),
+    ]);
+
+    return {
+      categories,
+      featured: recent.items,
+      onSale: recent.items.filter((product) => product.discountPercent > 0).slice(0, 4),
+      topRated: topRated.items,
+      freeShippingThresholdCents: policy.freeShippingThresholdCents,
+    };
+  } catch {
+    return null;
   }
-  return res.json();
 }
 
 export default async function HomePage() {
-  let products: Product[] = [];
-  let error = false;
+  const data = await getHomeData();
 
-  try {
-    products = await getProducts();
-  } catch {
-    error = true;
-  }
-
-  if (error) {
-    return (
-      <div className="empty">
-        <p>
-          Não foi possível conectar à API. Verifique se ela está rodando em{' '}
-          <code>http://localhost:3001</code> (execute <code>npm run dev:api</code>).
-        </p>
-      </div>
-    );
+  if (!data) {
+    return <ApiOffline />;
   }
 
   return (
-    <div>
-      <h1>Nossos Produtos</h1>
-      <div className="grid">
-        {products.map((product) => (
-          <Link key={product.id} href={`/product/${product.id}`} className="card">
-            <Image
-              src={product.image}
-              alt={product.name}
-              width={400}
-              height={400}
-              style={{ width: '100%', height: 180, objectFit: 'cover' }}
-            />
-            <div className="card-body">
-              <h3>{product.name}</h3>
-              <p className="price">
-                {product.price.toLocaleString('pt-BR', {
-                  style: 'currency',
-                  currency: 'BRL',
-                })}
-              </p>
-            </div>
+    <div className="home">
+      <section className="hero">
+        <div>
+          <h1>Tudo o que você precisa, em poucos cliques</h1>
+          <p>
+            Frete grátis em compras acima de{' '}
+            <strong>{formatCents(data.freeShippingThresholdCents)}</strong>. Pague com PIX, boleto
+            ou cartão em até 12x.
+          </p>
+          <Link href="/busca" className="button">
+            Ver todos os produtos
           </Link>
-        ))}
-      </div>
+        </div>
+        <ul className="hero-perks">
+          <li>
+            <strong>Frete grátis</strong>
+            <span>Acima de {formatCents(data.freeShippingThresholdCents)}</span>
+          </li>
+          <li>
+            <strong>Até 12x</strong>
+            <span>Sem juros no cartão</span>
+          </li>
+          <li>
+            <strong>PIX na hora</strong>
+            <span>Confirmação imediata</span>
+          </li>
+          <li>
+            <strong>Rastreio</strong>
+            <span>Acompanhe cada etapa</span>
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 className="section-title">Categorias</h2>
+        <div className="chips">
+          {data.categories.map((category) => (
+            <Link
+              key={category.slug}
+              href={`/busca?category=${category.slug}`}
+              className="chip"
+            >
+              {category.label}
+              <span className="chip-count">{category.count}</span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {data.onSale.length > 0 && (
+        <section>
+          <div className="section-header">
+            <h2 className="section-title">Em promoção</h2>
+            <Link href="/busca?sort=price_asc" className="section-link">
+              Ver tudo
+            </Link>
+          </div>
+          <div className="grid">
+            {data.onSale.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section>
+        <div className="section-header">
+          <h2 className="section-title">Mais bem avaliados</h2>
+          <Link href="/busca?sort=rating" className="section-link">
+            Ver tudo
+          </Link>
+        </div>
+        <div className="grid">
+          {data.topRated.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <div className="section-header">
+          <h2 className="section-title">Novidades</h2>
+          <Link href="/busca" className="section-link">
+            Ver tudo
+          </Link>
+        </div>
+        <div className="grid">
+          {data.featured.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

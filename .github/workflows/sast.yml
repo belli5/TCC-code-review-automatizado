@@ -1,0 +1,70 @@
+name: Security - SAST (Semgrep)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: sast-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  semgrep:
+    name: Semgrep OSS (gate)
+    runs-on: ubuntu-latest
+    # A imagem oficial já traz o engine e as dependências; evita instalar o
+    # Python e o pacote a cada execução. É o padrão documentado pela Semgrep
+    # para GitHub Actions.
+    container:
+      image: semgrep/semgrep
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Duas passadas de propósito. A primeira reporta tudo (INFO, WARNING e
+      # ERROR) para o code scanning, para dar visibilidade sem travar o PR. A
+      # segunda é o gate e só olha ERROR. Sem essa separação, ou o WARNING
+      # bloqueia merge por coisa que não é vulnerabilidade, ou ele nunca é visto
+      # por ninguém. As regras ficam em cache entre as duas, então a segunda
+      # passada é rápida.
+      #
+      # Sem `--error`, o `semgrep scan` sai com código 0 mesmo tendo achados —
+      # por isso este passo não precisa de `continue-on-error`. E não tê-lo é
+      # melhor: assim um ruleset inválido ou uma falha de rede quebram o job em
+      # vez de passarem em silêncio produzindo um SARIF vazio.
+      - name: Semgrep - relatório completo (SARIF)
+        run: |
+          semgrep scan \
+            --config=p/javascript \
+            --config=p/typescript \
+            --config=p/nodejs \
+            --config=p/react \
+            --config=p/owasp-top-ten \
+            --sarif --output=semgrep.sarif \
+            --metrics=off
+
+      - name: Publica o SARIF no code scanning
+        if: always() && hashFiles('semgrep.sarif') != ''
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+      - name: Gate - falha em severidade ERROR
+        run: |
+          semgrep scan \
+            --config=p/javascript \
+            --config=p/typescript \
+            --config=p/nodejs \
+            --config=p/react \
+            --config=p/owasp-top-ten \
+            --severity=ERROR \
+            --error \
+            --metrics=off

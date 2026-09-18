@@ -18,5 +18,12 @@
     "test": "npm run test --workspaces --if-present",
     "test:e2e": "npm run test:e2e --workspace=apps/api --if-present",
     "ci": "npm run lint && npm run typecheck && npm run build && npm run test && npm run test:e2e"
+  },
+  "comment:overrides": "Vulnerabilidades em dependencias transitivas, que nao declaramos e nao podemos versionar direto. O override sobe so o pacote afetado, sem arrastar a major do pacote pai que o traz. Cada linha sai daqui quando o pai passar a resolver sozinho uma versao >= a fixada.",
+  "overrides": {
+    "postcss": "^8.5.18",
+    "multer": "^2.3.0",
+    "mysql2": "^3.22.0",
+    "deepmerge-ts": "^8.0.0"
   }
 }

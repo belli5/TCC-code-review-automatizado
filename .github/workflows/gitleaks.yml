@@ -1,0 +1,57 @@
+name: Security - Segredos (Gitleaks)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # Necessário para publicar o SARIF na aba Security > Code scanning.
+  security-events: write
+
+concurrency:
+  group: gitleaks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gitleaks:
+    name: Gitleaks (gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # O gitleaks varre o histórico, não só a árvore de trabalho. Uma chave
+          # commitada e removida no commit seguinte continua acessível pelo
+          # `git log`, e é exatamente esse caso que precisa ser pego: o segredo
+          # já vazou no momento em que o push aconteceu.
+          fetch-depth: 0
+
+      - name: Gitleaks
+        # v3 é obrigatória: a v2 roda em Node 20, que sai dos runners do GitHub
+        # em setembro de 2026. A v3 só troca o runtime para Node 24 — inputs,
+        # outputs e comportamento são idênticos.
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Gera o results.sarif no workspace e o resumo na página do run.
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: true
+          GITLEAKS_ENABLE_SUMMARY: true
+          # A action é gratuita para repositórios de contas pessoais. Se este
+          # repositório for movido para uma organização, o GitHub passa a exigir
+          # uma licença (também gratuita) em GITLEAKS_LICENSE.
+          # GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+      - name: Publica o SARIF no code scanning
+        # `always()` porque este passo só interessa quando o anterior falhou —
+        # é o achado que precisa aparecer na aba Security. O `hashFiles` evita
+        # quebrar o job quando não houve vazamento e o arquivo não existe.
+        if: always() && hashFiles('results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          sarif_file: results.sarif
+          # Sem `category` distinta, o upload de uma ferramenta sobrescreve o da
+          # outra e o code scanning mostra só o último que rodou.
+          category: gitleaks

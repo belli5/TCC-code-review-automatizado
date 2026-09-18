@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useCallback, useEffect, useState } from 'react';
+import { use, useCallback, useEffect, useState } from 'react';
 import { ApiError, Order, api } from '../../../lib/api';
 import {
   formatBusinessDays,
@@ -16,7 +16,11 @@ import { OrderTimeline } from '../../../components/OrderTimeline';
 import { QrCodePreview } from '../../../components/QrCodePreview';
 import { CopyButton } from '../../../components/CopyButton';
 
-export default function OrderPage({ params }: { params: { id: string } }) {
+// `params` virou Promise no Next 15, mas um client component nao pode ser
+// async. `use()` desembrulha a Promise suspendendo o componente ate os
+// parametros chegarem.
+export default function OrderPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
@@ -24,12 +28,12 @@ export default function OrderPage({ params }: { params: { id: string } }) {
 
   const load = useCallback(async () => {
     try {
-      setOrder(await api.order(params.id));
+      setOrder(await api.order(id));
       setError(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Não foi possível carregar o pedido.');
     }
-  }, [params.id]);
+  }, [id]);
 
   useEffect(() => {
     load();

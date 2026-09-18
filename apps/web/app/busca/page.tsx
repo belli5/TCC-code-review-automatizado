@@ -23,19 +23,26 @@ function pageHref(params: SearchParams, page: number): string {
   return `/busca?${next.toString()}`;
 }
 
-export default async function SearchPage({ searchParams }: { searchParams: SearchParams }) {
-  const page = Number(searchParams.page ?? '1') || 1;
+// No Next 15 `searchParams` deixou de ser um objeto sincrono e virou Promise:
+// a rota pode comecar a renderizar antes de os parametros serem conhecidos.
+export default async function SearchPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const filters = await searchParams;
+  const page = Number(filters.page ?? '1') || 1;
 
   let data;
   let categories;
   try {
     [data, categories] = await Promise.all([
       api.products({
-        search: searchParams.search,
-        category: searchParams.category,
-        sort: searchParams.sort,
-        inStock: searchParams.inStock === 'true' ? true : undefined,
-        maxPriceCents: searchParams.maxPriceCents ? Number(searchParams.maxPriceCents) : undefined,
+        search: filters.search,
+        category: filters.category,
+        sort: filters.sort,
+        inStock: filters.inStock === 'true' ? true : undefined,
+        maxPriceCents: filters.maxPriceCents ? Number(filters.maxPriceCents) : undefined,
         page,
         pageSize: 9,
       }),
@@ -45,9 +52,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
     return <ApiOffline />;
   }
 
-  const title = searchParams.search
-    ? `Resultados para "${searchParams.search}"`
-    : (categories.find((c) => c.slug === searchParams.category)?.label ?? 'Todos os produtos');
+  const title = filters.search
+    ? `Resultados para "${filters.search}"`
+    : (categories.find((c) => c.slug === filters.category)?.label ?? 'Todos os produtos');
 
   return (
     <div className="search-layout">
@@ -83,7 +90,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
                 {Array.from({ length: data.totalPages }, (_, index) => index + 1).map((n) => (
                   <Link
                     key={n}
-                    href={pageHref(searchParams, n)}
+                    href={pageHref(filters, n)}
                     className={n === data.page ? 'page-link is-active' : 'page-link'}
                   >
                     {n}

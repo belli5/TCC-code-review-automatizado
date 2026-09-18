@@ -25,13 +25,13 @@ jobs:
     name: Trivy (gate)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Não roda `npm ci`: o Trivy lê o package-lock.json direto e resolve a
       # árvore inteira de dependências a partir dele, incluindo as transitivas.
       # Instalar antes só deixaria o job mais lento.
       - name: Trivy - relatório completo (SARIF)
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -47,13 +47,13 @@ jobs:
 
       - name: Publica o SARIF no code scanning
         if: always() && hashFiles('trivy.sarif') != ''
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
           sarif_file: trivy.sarif
           category: trivy
 
       - name: Gate - falha em HIGH/CRITICAL com correção disponível
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
           scan-ref: .

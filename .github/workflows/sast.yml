@@ -26,7 +26,7 @@ jobs:
       image: semgrep/semgrep
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Duas passadas de propósito. A primeira reporta tudo (INFO, WARNING e
       # ERROR) para o code scanning, para dar visibilidade sem travar o PR. A
@@ -52,7 +52,7 @@ jobs:
 
       - name: Publica o SARIF no code scanning
         if: always() && hashFiles('semgrep.sarif') != ''
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
           sarif_file: semgrep.sarif
           category: semgrep

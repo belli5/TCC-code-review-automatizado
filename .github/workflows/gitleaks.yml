@@ -27,6 +27,7 @@ jobs:
           # commitada e removida no commit seguinte continua acessível pelo
           # `git log`, e é exatamente esse caso que precisa ser pego: o segredo
           # já vazou no momento em que o push aconteceu.
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Gitleaks

@@ -23,10 +23,12 @@ jobs:
     # Python e o pacote a cada execução. É o padrão documentado pela Semgrep
     # para GitHub Actions.
     container:
-      image: semgrep/semgrep
+      image: semgrep/semgrep@sha256:acaac22ffc7b7cc5926de0751b223bce0b2491c33d18422fa72f632c78d81198 # 1.177.0
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       # Duas passadas de propósito. A primeira reporta tudo (INFO, WARNING e
       # ERROR) para o code scanning, para dar visibilidade sem travar o PR. A
